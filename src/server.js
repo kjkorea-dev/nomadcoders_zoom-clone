@@ -12,7 +12,15 @@ app.get("/", (req, res) => res.render("home"));
 app.get("/*", (req, res) => res.redirect("/"));
 
 const server = createServer(app);
+
 const wss = new WebSocketServer({ server });
-wss.on("connection", (socket) => console.log(socket));
+wss.on("connection", (socket) => {
+  console.log("Connected to Browser ✅");
+  socket.send("Hello!!!");
+  socket.on("message", (message) => {
+    console.log(message.toString());
+  });
+  socket.on("close", () => console.log("Disconnected from the Browser ⛔"));
+});
 
 server.listen(3000, () => console.log("Listening on http://localhost:3000"));
