@@ -14,6 +14,15 @@ app.get("/*", (req, res) => res.redirect("/"));
 const httpServer = createServer(app);
 const wsServer = new Server(httpServer);
 
+wsServer.on("connection", (socket) => {
+  socket.on("enter_room", (roomName, done) => {
+    console.log(roomName);
+    setTimeout(() => {
+      done("Hello!!");
+    }, 3000);
+  });
+});
+
 /* const wss = new WebSocketServer({ server });
 const sockets = [];
 wss.on("connection", (socket) => {
