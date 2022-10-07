@@ -22,3 +22,18 @@ form.addEventListener("submit", (e) => {
   socket.emit("enter_room", input.value, showRoom);
   input.value = "";
 });
+
+function addMessage(message) {
+  const ul = room.querySelector("ul");
+  const li = document.createElement("li");
+  li.innerText = message;
+  ul.appendChild(li);
+}
+
+socket.on("welcome", () => {
+  addMessage("Someone joined!!!");
+});
+
+socket.on("bye", () => {
+  addMessage("Someone left...");
+});
