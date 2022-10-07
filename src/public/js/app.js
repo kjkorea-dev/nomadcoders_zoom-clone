@@ -13,11 +13,20 @@ function showRoom() {
   welcome.hidden = true;
   const h3 = document.querySelector("h3");
   h3.innerText = `Room: ${roomName}`;
+  const form = room.querySelector("form");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = form.querySelector("input");
+    socket.emit("new_message", input.value, roomName, () => {
+      addMessage(`You: ${input.value}`);
+      input.value = "";
+    });
+  });
 }
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  const input = form.querySelector("input[type=text]");
+  const input = form.querySelector("input");
   roomName = input.value;
   socket.emit("enter_room", input.value, showRoom);
   input.value = "";
@@ -37,3 +46,5 @@ socket.on("welcome", () => {
 socket.on("bye", () => {
   addMessage("Someone left...");
 });
+
+socket.on("new_message", addMessage);
