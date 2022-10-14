@@ -10,26 +10,27 @@ app.set("views", __dirname + "/views");
 app.use("/public", express.static(__dirname + "/public"));
 
 app.get("/", (req, res) => res.render("home"));
+app.get("/chat", (req, res) => res.render("chat"));
 app.get("/*", (req, res) => res.redirect("/"));
 
 const httpServer = createServer(app);
-const wsServer = new Server(httpServer, {
+const io = new Server(httpServer, {
   cors: {
     origin: ["https://admin.socket.io"],
     credentials: true,
   },
 });
 
-instrument(wsServer, {
+instrument(io, {
   auth: false,
 });
 
-function publicRooms() {
+const chatNamespace = io.of("/chat");
+
+function publicRooms(nsp) {
   const {
-    sockets: {
-      adapter: { sids, rooms },
-    },
-  } = wsServer;
+    adapter: { sids, rooms },
+  } = nsp;
   const publicRooms = [];
   rooms.forEach((_, key) => {
     if (sids.get(key) === undefined) publicRooms.push(key);
@@ -37,28 +38,32 @@ function publicRooms() {
   return publicRooms;
 }
 
-function countRoom(roomName) {
-  return wsServer.sockets.adapter.rooms.get(roomName)?.size;
+function countRoom(nsp, roomName) {
+  return nsp.adapter.rooms.get(roomName)?.size;
 }
 
-wsServer.on("connection", (socket) => {
+chatNamespace.on("connection", (socket) => {
   socket["nickname"] = "Anonymous";
   socket.onAny((event) => {
     console.log(`Socket Event: ${event}`);
   });
   socket.on("enter_room", (roomName, done) => {
     socket.join(roomName);
-    done(countRoom(roomName));
-    socket.to(roomName).emit("welcome", socket.nickname, countRoom(roomName));
-    wsServer.sockets.emit("room_change", publicRooms());
+    done(countRoom(chatNamespace, roomName));
+    socket
+      .to(roomName)
+      .emit("welcome", socket.nickname, countRoom(chatNamespace, roomName));
+    chatNamespace.emit("room_change", publicRooms(chatNamespace));
   });
   socket.on("disconnecting", () => {
     socket.rooms.forEach((room) => {
-      socket.to(room).emit("bye", socket.nickname, countRoom(room) - 1);
+      socket
+        .to(room)
+        .emit("bye", socket.nickname, countRoom(chatNamespace, room) - 1);
     });
   });
   socket.on("disconnect", () => {
-    wsServer.sockets.emit("room_change", publicRooms());
+    chatNamespace.emit("room_change", publicRooms(chatNamespace));
   });
   socket.on("new_message", (message, room, done) => {
     socket.to(room).emit("new_message", `${socket.nickname}: ${message}`);
